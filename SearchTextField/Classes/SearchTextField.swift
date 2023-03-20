@@ -133,6 +133,10 @@ open class SearchTextField: UITextField {
     open var tableCornerRadius: CGFloat = 2.0
     open var tableBottomMargin: CGFloat = 10.0
     
+    /// Set the text to filtered. If it's not set it will only filter the default textfield text.
+    /// Example usage, multiple search on substring of textfield text
+    open var textToFilter: String?
+    
     ////////////////////////////////////////////////////////////////////////
     // Private implementation
     
@@ -253,7 +257,8 @@ open class SearchTextField: UITextField {
             placeholderLabel?.backgroundColor = UIColor.clear
             placeholderLabel?.lineBreakMode = .byClipping
             
-            if let placeholderColor = self.attributedPlaceholder?.attribute(NSAttributedString.Key.foregroundColor, at: 0, effectiveRange: nil) as? UIColor {
+            if let attributedPlaceholder = self.attributedPlaceholder, attributedPlaceholder.length > 0,
+               let placeholderColor = attributedPlaceholder.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor {
                 placeholderLabel?.textColor = placeholderColor
             } else {
                 placeholderLabel?.textColor = UIColor ( red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0 )
@@ -435,7 +440,7 @@ open class SearchTextField: UITextField {
     fileprivate func filter(forceShowAll addAll: Bool) {
         clearResults()
         
-        if text!.count < minCharactersNumberToStartFiltering {
+        if (textToFilter?.count ?? self.text!.count) < minCharactersNumberToStartFiltering {
             return
         }
         
@@ -445,8 +450,8 @@ open class SearchTextField: UITextField {
             
             if !inlineMode {
                 // Find text in title and subtitle
-                let titleFilterRange = (item.title as NSString).range(of: text!, options: comparisonOptions)
-                let subtitleFilterRange = item.subtitle != nil ? (item.subtitle! as NSString).range(of: text!, options: comparisonOptions) : NSMakeRange(NSNotFound, 0)
+                let titleFilterRange = (item.title as NSString).range(of: textToFilter ?? self.text!, options: comparisonOptions)
+                let subtitleFilterRange = item.subtitle != nil ? (item.subtitle! as NSString).range(of: textToFilter ?? self.text!, options: comparisonOptions) : NSMakeRange(NSNotFound, 0)
                 
                 if titleFilterRange.location != NSNotFound || subtitleFilterRange.location != NSNotFound || addAll {
                     item.attributedTitle = NSMutableAttributedString(string: item.title)
@@ -461,7 +466,7 @@ open class SearchTextField: UITextField {
                     filteredResults.append(item)
                 }
             } else {
-                var textToFilter = text!.lowercased()
+                var textToFilter = (textToFilter ?? self.text!).lowercased()
                 
                 if inlineMode, let filterAfter = startFilteringAfter {
                     if let suffixToFilter = textToFilter.components(separatedBy: filterAfter).last, (suffixToFilter != "" || startSuggestingImmediately == true), textToFilter != suffixToFilter {
@@ -530,7 +535,7 @@ open class SearchTextField: UITextField {
     // MARK: - Prepare for draw table result
     
     fileprivate func prepareDrawTableResult() {
-        guard let frame = self.superview?.convert(self.frame, to: UIApplication.shared.keyWindow) else { return }
+        guard let frame = self.superview?.convert(self.frame, to: UIApplication.shared.windows.first { $0.isKeyWindow }) else { return }
         if let keyboardFrame = keyboardFrame {
             var newFrame = frame
             newFrame.size.height += theme.cellHeight
@@ -543,7 +548,8 @@ open class SearchTextField: UITextField {
             
             redrawSearchTableView()
         } else {
-            if self.center.y + theme.cellHeight > UIApplication.shared.keyWindow!.frame.size.height {
+            let key = UIApplication.shared.windows.first { $0.isKeyWindow }
+            if self.center.y + theme.cellHeight > key!.frame.size.height {
                 direction = .up
             } else {
                 direction = .down
