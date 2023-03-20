@@ -133,6 +133,10 @@ open class SearchTextField: UITextField {
     open var tableCornerRadius: CGFloat = 2.0
     open var tableBottomMargin: CGFloat = 10.0
     
+    /// Set the text to filtered. If it's not set it will only filter the default textfield text.
+    /// Example usage, multiple search on substring of textfield text
+    open var textToFilter: String?
+    
     ////////////////////////////////////////////////////////////////////////
     // Private implementation
     
@@ -144,7 +148,7 @@ open class SearchTextField: UITextField {
     fileprivate var timer: Timer? = nil
     fileprivate var placeholderLabel: UILabel?
     fileprivate static let cellIdentifier = "APSearchTextFieldCell"
-    fileprivate let indicator = UIActivityIndicatorView(style: .whiteLarge)
+    fileprivate let indicator = UIActivityIndicatorView(style: .gray)
     fileprivate var maxTableViewSize: CGFloat = 0
     
     fileprivate var filteredResults = [SearchTextFieldItem]()
@@ -436,7 +440,7 @@ open class SearchTextField: UITextField {
     fileprivate func filter(forceShowAll addAll: Bool) {
         clearResults()
         
-        if text!.count < minCharactersNumberToStartFiltering {
+        if (textToFilter?.count ?? self.text!.count) < minCharactersNumberToStartFiltering {
             return
         }
         
@@ -446,8 +450,8 @@ open class SearchTextField: UITextField {
             
             if !inlineMode {
                 // Find text in title and subtitle
-                let titleFilterRange = (item.title as NSString).range(of: text!, options: comparisonOptions)
-                let subtitleFilterRange = item.subtitle != nil ? (item.subtitle! as NSString).range(of: text!, options: comparisonOptions) : NSMakeRange(NSNotFound, 0)
+                let titleFilterRange = (item.title as NSString).range(of: textToFilter ?? self.text!, options: comparisonOptions)
+                let subtitleFilterRange = item.subtitle != nil ? (item.subtitle! as NSString).range(of: textToFilter ?? self.text!, options: comparisonOptions) : NSMakeRange(NSNotFound, 0)
                 
                 if titleFilterRange.location != NSNotFound || subtitleFilterRange.location != NSNotFound || addAll {
                     item.attributedTitle = NSMutableAttributedString(string: item.title)
@@ -462,7 +466,7 @@ open class SearchTextField: UITextField {
                     filteredResults.append(item)
                 }
             } else {
-                var textToFilter = text!.lowercased()
+                var textToFilter = (textToFilter ?? self.text!).lowercased()
                 
                 if inlineMode, let filterAfter = startFilteringAfter {
                     if let suffixToFilter = textToFilter.components(separatedBy: filterAfter).last, (suffixToFilter != "" || startSuggestingImmediately == true), textToFilter != suffixToFilter {
